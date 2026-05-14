@@ -54,7 +54,7 @@ public class MensajeTextoHandler implements Handler<PayloadEnviarMensaje> {
         String hashSha256 = CryptoUtil.sha256Base64(contenidoBytes);
         String contenidoCifrado = CryptoUtil.aesEncryptBase64(contenidoBytes);
 
-        mensajeRepository.guardar(mensajeId, remitente, ipRemitente, texto, hashSha256, contenidoCifrado, fechaEnvio, null);
+        mensajeRepository.guardar(mensajeId, remitente, ipRemitente, texto, hashSha256, contenidoCifrado, fechaEnvio, null, null);
 
         LOGGER.info(() -> "Mensaje de texto recibido | Remitente: %s | IP: %s | Hash: %s "
                 .formatted(remitente, ipRemitente, hashSha256));

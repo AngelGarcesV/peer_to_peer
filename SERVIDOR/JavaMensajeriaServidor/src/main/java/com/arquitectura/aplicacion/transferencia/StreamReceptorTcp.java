@@ -60,12 +60,20 @@ public class StreamReceptorTcp {
 
         LOGGER.info("StreamReceptorTcp: iniciando recepción de chunks");
 
+        // Guarda el último estado S2S visto para poder finalizarlo en EOF
+        EstadoTransferencia ultimoEstadoS2S = null;
+
         while (true) {
             // 1. Leer header completo
             byte[] header = leerExacto(is, HEADER_LEN);
             if (header == null) {
                 // EOF — el cliente cerró la conexión normalmente
                 LOGGER.info("StreamReceptorTcp: conexión cerrada por el cliente (EOF)");
+                // Si era S2S y aún no se finalizó (estaCompleta() pudo no haberse alcanzado
+                // porque totalChunks era una estimación), finalizamos aquí.
+                if (ultimoEstadoS2S != null && gestorTransferencias.existe(ultimoEstadoS2S.getTransferId())) {
+                    gestorTransferencias.finalizarTransferenciaS2S(ultimoEstadoS2S.getTransferId());
+                }
                 break;
             }
 
@@ -89,6 +97,11 @@ public class StreamReceptorTcp {
                 os.write(NACK);
                 os.flush();
                 break;
+            }
+
+            // Trackear el último estado S2S visto (para el caso de EOF)
+            if (estado.isEsReplicacionS2S()) {
+                ultimoEstadoS2S = estado;
             }
 
             // 4. Leer datos del chunk
@@ -125,6 +138,10 @@ public class StreamReceptorTcp {
             // 8. Si ya llegaron todos los chunks, salir del bucle
             if (estado.estaCompleta()) {
                 LOGGER.info(() -> "StreamReceptorTcp: todos los chunks recibidos para " + transferId.trim());
+                // Finalizar transferencia S2S si corresponde
+                if (estado.isEsReplicacionS2S()) {
+                    gestorTransferencias.finalizarTransferenciaS2S(transferId.trim());
+                }
                 break;
             }
         }

@@ -36,6 +36,9 @@ public class MensajeModel {
     @Column(name = "servidor_origen", length = 100)
     private String servidorOrigen;  // null for locally-originated records
 
+    @Column(name = "destinatario", length = 255)
+    private String destinatario;  // null = broadcast, valor = unicast
+
     public String getId() {
         return id;
     }
@@ -98,5 +101,13 @@ public class MensajeModel {
 
     public void setServidorOrigen(String servidorOrigen) {
         this.servidorOrigen = servidorOrigen;
+    }
+
+    public String getDestinatario() {
+        return destinatario;
+    }
+
+    public void setDestinatario(String destinatario) {
+        this.destinatario = destinatario;
     }
 }

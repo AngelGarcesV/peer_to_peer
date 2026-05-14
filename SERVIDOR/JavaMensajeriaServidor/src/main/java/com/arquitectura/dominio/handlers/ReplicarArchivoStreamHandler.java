@@ -54,13 +54,16 @@ public class ReplicarArchivoStreamHandler implements Handler<PayloadReplicarArch
             // Estimacion: si tamano > 0 usar tamano, chunks = 1 (se ajusta con FinalizarStream)
             long totalChunks = payload.getTamano() > 0 ? Math.max(1, payload.getTamano() / (64 * 1024)) : 1;
 
-            gestorTransferencias.registrar(
+            gestorTransferencias.registrarS2S(
                     transferId,
                     payload.getNombreArchivo(),
                     payload.getExtension(),
                     payload.getTamano(),
                     totalChunks,
-                    rutaTemporal
+                    rutaTemporal,
+                    payload.getServidorOrigen(),
+                    payload.getRemitente(),
+                    payload.getHashSha256()
             );
 
             LOGGER.info(() -> "Stream S2S registrado: " + transferId

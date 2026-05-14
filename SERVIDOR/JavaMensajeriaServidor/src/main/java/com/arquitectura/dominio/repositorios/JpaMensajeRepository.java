@@ -13,7 +13,7 @@ public class JpaMensajeRepository implements MensajeRepository {
     @Override
     public void guardar(String mensajeId, String autor, String ipRemitente, String contenido,
                         String hashSha256, String contenidoCifrado, LocalDateTime fechaEnvio,
-                        String servidorOrigen) {
+                        String servidorOrigen, String destinatario) {
         MensajeModel entity = new MensajeModel();
         entity.setId(mensajeId);
         entity.setAutor(autor);
@@ -23,6 +23,7 @@ public class JpaMensajeRepository implements MensajeRepository {
         entity.setContenidoCifrado(contenidoCifrado);
         entity.setFechaEnvio(fechaEnvio);
         entity.setServidorOrigen(servidorOrigen);
+        entity.setDestinatario(destinatario);
 
         EntityManager entityManager = HibernateManager.crearEntityManager();
         EntityTransaction transaction = entityManager.getTransaction();
@@ -59,6 +60,19 @@ public class JpaMensajeRepository implements MensajeRepository {
                 "SELECT m FROM MensajeModel m ORDER BY m.fechaEnvio DESC",
                 MensajeModel.class
             ).getResultList();
+        } finally {
+            em.close();
+        }
+    }
+
+    @Override
+    public List<MensajeModel> listarParaUsuario(String username) {
+        EntityManager em = HibernateManager.crearEntityManager();
+        try {
+            return em.createQuery(
+                "SELECT m FROM MensajeModel m WHERE m.destinatario IS NULL OR m.destinatario = :username ORDER BY m.fechaEnvio ASC",
+                MensajeModel.class
+            ).setParameter("username", username).getResultList();
         } finally {
             em.close();
         }

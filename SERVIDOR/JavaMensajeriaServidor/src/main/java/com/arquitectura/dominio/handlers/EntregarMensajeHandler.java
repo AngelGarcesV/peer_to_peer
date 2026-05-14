@@ -3,6 +3,8 @@ package com.arquitectura.dominio.handlers;
 import com.arquitectura.aplicacion.router.Handler;
 import com.arquitectura.aplicacion.sesion.GestorServidoresPeer;
 import com.arquitectura.aplicacion.sesion.GestorSesiones;
+import com.arquitectura.dominio.repositorios.JpaMensajeRepository;
+import com.arquitectura.dominio.repositorios.MensajeRepository;
 import com.arquitectura.mensajeria.Mensaje;
 import com.arquitectura.mensajeria.Metadata;
 import com.arquitectura.mensajeria.Respuesta;
@@ -29,6 +31,7 @@ import java.util.logging.Logger;
 public class EntregarMensajeHandler implements Handler<PayloadEntregarMensaje> {
 
     private static final Logger LOGGER = Logger.getLogger(EntregarMensajeHandler.class.getName());
+    private final MensajeRepository mensajeRepository = new JpaMensajeRepository();
 
     @Override
     public Respuesta<?> handle(Mensaje<PayloadEntregarMensaje> mensaje) {
@@ -47,11 +50,27 @@ public class EntregarMensajeHandler implements Handler<PayloadEntregarMensaje> {
         boolean esLocal = gestorSesiones.existeSesionActiva(destinatario);
 
         if (esLocal) {
-            // El cliente esta en este servidor. Con la arquitectura request-response actual
-            // no es posible hacer push directo. Registramos la entrega como exitosa;
-            // el cliente recibira el mensaje en su proximo poll/request.
-            LOGGER.info(() -> "Entrega local registrada para " + destinatario
-                    + " | autor=" + payload.getAutor());
+            // El cliente esta en este servidor. Persistir el mensaje unicast para que
+            // el destinatario lo reciba en su proximo poll/request.
+            LocalDateTime timestamp = payload.getTimestamp() != null ? payload.getTimestamp() : LocalDateTime.now();
+            try {
+                mensajeRepository.guardar(
+                        UUID.randomUUID().toString(),
+                        payload.getAutor(),
+                        payload.getServidorOrigen(),
+                        payload.getContenido(),
+                        "",   // hash — no recalcular en entrega peer-to-peer
+                        "",   // contenidoCifrado — no necesario para texto plano
+                        timestamp,
+                        payload.getServidorOrigen(),
+                        payload.getDestinatario()
+                );
+                LOGGER.info(() -> "Mensaje unicast persistido para " + destinatario
+                        + " | autor=" + payload.getAutor());
+            } catch (Exception e) {
+                LOGGER.severe(() -> "Error al persistir mensaje unicast para " + destinatario
+                        + ": " + e.getMessage());
+            }
 
             return crearRespuesta("Mensaje entregado localmente a " + destinatario);
         }

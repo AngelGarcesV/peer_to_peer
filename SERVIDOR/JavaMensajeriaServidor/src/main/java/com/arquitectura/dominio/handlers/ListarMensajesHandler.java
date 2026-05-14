@@ -27,7 +27,17 @@ public class ListarMensajesHandler implements Handler<Object> {
     @Override
     public Respuesta<?> handle(Mensaje<Object> mensaje) {
         try {
-            List<MensajeModel> mensajes = mensajeRepository.listarTodos();
+            String username = null;
+            if (mensaje.getMetadata() != null) {
+                username = mensaje.getMetadata().getClientId();
+            }
+
+            List<MensajeModel> mensajes;
+            if (username != null && !username.isBlank()) {
+                mensajes = mensajeRepository.listarParaUsuario(username);
+            } else {
+                mensajes = mensajeRepository.listarTodos();
+            }
 
             List<Map<String, Object>> resultado = new ArrayList<>();
             for (MensajeModel m : mensajes) {

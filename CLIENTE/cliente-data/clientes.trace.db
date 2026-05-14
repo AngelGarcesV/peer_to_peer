@@ -599,3 +599,5 @@ Caused by: org.h2.mvstore.MVStoreException: The file is locked: D:/Universidad/R
 	at org.h2.mvstore.SingleFileStore.open(SingleFileStore.java:81)
 	at org.h2.mvstore.MVStore.<init>(MVStore.java:286)
 	... 32 more
+2026-05-14 17:30:56.025534-05:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "BINARY VARYING": "4d5a90000300000004000000ffff0000b80000000000000040000000000000000000000000000000... (1275906984)" [22001-224]

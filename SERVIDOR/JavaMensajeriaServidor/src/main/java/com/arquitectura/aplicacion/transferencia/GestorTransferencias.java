@@ -1,11 +1,16 @@
 package com.arquitectura.aplicacion.transferencia;
 
+import com.arquitectura.dominio.repositorios.ArchivoRecibidoRepository;
+import com.arquitectura.dominio.repositorios.JpaArchivoRecibidoRepository;
+import com.arquitectura.infraestructura.seguridad.CryptoUtil;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
@@ -54,6 +59,146 @@ public class GestorTransferencias {
     }
 
     /**
+     * Registra una transferencia S2S (replicación entre peers).
+     * Igual que {@link #registrar} pero marca la transferencia como S2S y guarda el servidorOrigen.
+     *
+     * @param transferId     UUID único de la transferencia (mismo que en el servidor origen)
+     * @param nombreArchivo  nombre original del archivo
+     * @param extension      extensión sin punto
+     * @param tamanoTotal    bytes totales esperados
+     * @param totalChunks    cantidad de chunks esperados
+     * @param rutaTemporal   path donde se irán escribiendo los chunks
+     * @param servidorOrigen identificador del servidor que originó el archivo
+     * @param remitente      usuario remitente del archivo
+     * @param hashEsperado   hash SHA-256 en Base64 enviado por el peer (para validación)
+     */
+    public void registrarS2S(String transferId, String nombreArchivo, String extension,
+                             long tamanoTotal, long totalChunks, Path rutaTemporal,
+                             String servidorOrigen, String remitente, String hashEsperado) {
+        EstadoTransferencia estado = new EstadoTransferencia(
+                transferId, nombreArchivo, extension, tamanoTotal, totalChunks, rutaTemporal);
+        estado.setEsReplicacionS2S(true);
+        estado.setServidorOrigen(servidorOrigen);
+        estado.setRemitente(remitente);
+        estado.setHashEsperado(hashEsperado);
+        transferencias.put(transferId, estado);
+        LOGGER.info(() -> "Transferencia S2S registrada: " + transferId
+                + " | archivo: " + nombreArchivo + " | origen: " + servidorOrigen);
+    }
+
+    /**
+     * Finaliza una transferencia S2S recibida:
+     * 1. Lee los bytes del .tmp.
+     * 2. Calcula hash SHA-256 y contenido cifrado AES.
+     * 3. Renombra el .tmp al nombre real (con manejo de colisiones).
+     * 4. Persiste en DB via ArchivoRecibidoRepository.
+     * 5. Limpia el registro en memoria.
+     *
+     * Es idempotente: si el .tmp ya no existe o el registro ya está en DB, no hace nada.
+     *
+     * @param transferId UUID de la transferencia a finalizar
+     */
+    public void finalizarTransferenciaS2S(String transferId) {
+        EstadoTransferencia estado = transferencias.get(transferId);
+        if (estado == null) {
+            LOGGER.fine(() -> "finalizarTransferenciaS2S: transferencia no encontrada (ya finalizada?): " + transferId);
+            return;
+        }
+        if (!estado.isEsReplicacionS2S()) {
+            LOGGER.fine(() -> "finalizarTransferenciaS2S: transferencia no es S2S, ignorando: " + transferId);
+            return;
+        }
+
+        ArchivoRecibidoRepository repositorio = new JpaArchivoRecibidoRepository();
+
+        // Idempotencia: si ya está en DB, solo limpiamos memoria
+        if (repositorio.existePorId(transferId)) {
+            LOGGER.info(() -> "finalizarTransferenciaS2S: ya persistido, limpiando memoria: " + transferId);
+            eliminar(transferId);
+            return;
+        }
+
+        Path rutaTemporal = estado.getRutaTemporal();
+        if (!Files.exists(rutaTemporal)) {
+            LOGGER.warning(() -> "finalizarTransferenciaS2S: archivo .tmp no existe: " + rutaTemporal);
+            eliminar(transferId);
+            return;
+        }
+
+        try {
+            byte[] bytes = Files.readAllBytes(rutaTemporal);
+            String hashSha256 = CryptoUtil.sha256Base64(bytes);
+            String contenidoCifrado = CryptoUtil.aesEncryptBase64(bytes);
+
+            Path rutaFinal = resolverRutaFinalS2S(estado);
+            Files.move(rutaTemporal, rutaFinal);
+
+            String nombreFinal = rutaFinal.getFileName().toString();
+            String nombreBase  = extraerNombreBase(nombreFinal);
+
+            String servidorOrigen = estado.getServidorOrigen() != null
+                    ? estado.getServidorOrigen() : "peer-desconocido";
+            String remitente = estado.getRemitente() != null
+                    ? estado.getRemitente() : "peer-desconocido";
+
+            repositorio.guardar(
+                    transferId,
+                    remitente,
+                    null,
+                    nombreBase,
+                    estado.getExtension(),
+                    rutaFinal.toAbsolutePath().toString(),
+                    hashSha256,
+                    contenidoCifrado,
+                    estado.getTamanoTotal(),
+                    LocalDateTime.now(),
+                    servidorOrigen
+            );
+
+            eliminar(transferId);
+
+            LOGGER.info(() -> "Replicación S2S finalizada: " + transferId
+                    + " | archivo: " + nombreFinal
+                    + " | bytes: " + bytes.length
+                    + " | origen: " + servidorOrigen);
+
+        } catch (IOException e) {
+            LOGGER.severe(() -> "finalizarTransferenciaS2S: error de disco para " + transferId + ": " + e.getMessage());
+            eliminar(transferId);
+        } catch (Exception e) {
+            LOGGER.severe(() -> "finalizarTransferenciaS2S: error inesperado para " + transferId + ": " + e.getMessage());
+            eliminar(transferId);
+        }
+    }
+
+    private Path resolverRutaFinalS2S(EstadoTransferencia estado) {
+        Path directorio = estado.getRutaTemporal().getParent();
+        String nombre   = estado.getNombreArchivo();
+        String ext      = estado.getExtension();
+        String nombreCompleto = (ext != null && !ext.isBlank() && !nombre.endsWith("." + ext))
+                ? nombre + "." + ext : nombre;
+
+        Path candidato = directorio.resolve(nombreCompleto);
+        if (!Files.exists(candidato)) return candidato;
+
+        String nombreBase = extraerNombreBase(nombreCompleto);
+        int contador = 1;
+        while (Files.exists(candidato)) {
+            String sufijo = (ext != null && !ext.isBlank())
+                    ? nombreBase + " (" + contador + ")." + ext
+                    : nombreBase + " (" + contador + ")";
+            candidato = directorio.resolve(sufijo);
+            contador++;
+        }
+        return candidato;
+    }
+
+    private String extraerNombreBase(String nombre) {
+        int dot = nombre.lastIndexOf('.');
+        return (dot > 0) ? nombre.substring(0, dot) : nombre;
+    }
+
+    /**
      * Devuelve el estado de una transferencia activa, o null si no existe.
      */
     public EstadoTransferencia obtener(String transferId) {
@@ -93,6 +238,18 @@ public class GestorTransferencias {
 
         private long chunksRecibidos = 0;
         private long bytesRecibidos = 0;
+
+        /** true si la transferencia proviene de replicación S2S (peer → peer). */
+        private boolean esReplicacionS2S = false;
+
+        /** Servidor que originó el archivo (solo para S2S). */
+        private String servidorOrigen;
+
+        /** Usuario remitente original (solo para S2S). */
+        private String remitente;
+
+        /** Hash SHA-256 esperado (enviado por el peer en el payload de control). */
+        private String hashEsperado;
 
         EstadoTransferencia(String transferId, String nombreArchivo, String extension,
                             long tamanoTotal, long totalChunks, Path rutaTemporal) {
@@ -165,5 +322,17 @@ public class GestorTransferencias {
         public Instant getInicio() { return inicio; }
         public long getChunksRecibidos() { return chunksRecibidos; }
         public long getBytesRecibidos() { return bytesRecibidos; }
+
+        public boolean isEsReplicacionS2S() { return esReplicacionS2S; }
+        public void setEsReplicacionS2S(boolean esReplicacionS2S) { this.esReplicacionS2S = esReplicacionS2S; }
+
+        public String getServidorOrigen() { return servidorOrigen; }
+        public void setServidorOrigen(String servidorOrigen) { this.servidorOrigen = servidorOrigen; }
+
+        public String getRemitente() { return remitente; }
+        public void setRemitente(String remitente) { this.remitente = remitente; }
+
+        public String getHashEsperado() { return hashEsperado; }
+        public void setHashEsperado(String hashEsperado) { this.hashEsperado = hashEsperado; }
     }
 }
