@@ -1,6 +1,7 @@
 package com.arquitectura.dominio.handlers;
 
 import com.arquitectura.aplicacion.router.Handler;
+import com.arquitectura.infraestructura.seguridad.CryptoUtil;
 import com.arquitectura.dominio.repositorios.ArchivoRecibidoRepository;
 import com.arquitectura.dominio.repositorios.JpaArchivoRecibidoRepository;
 import com.arquitectura.mensajeria.Mensaje;
@@ -15,7 +16,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -50,7 +50,7 @@ public class ReplicarArchivoHandler implements Handler<PayloadReplicarArchivo> {
         String rutaFinal = "";
         try {
             if (payload.getContenidoCifrado() != null && !payload.getContenidoCifrado().isBlank()) {
-                byte[] contenidoBytes = decodificarBase64(payload.getContenidoCifrado());
+                byte[] contenidoBytes = CryptoUtil.aesDecryptBase64(payload.getContenidoCifrado());
                 Path rutaArchivo = guardarArchivo(payload.getNombreArchivo(), payload.getExtension(), contenidoBytes);
                 rutaFinal = rutaArchivo.toAbsolutePath().toString();
                 LOGGER.info(() -> "Archivo replicado guardado en disco: " + rutaArchivo.toAbsolutePath());
@@ -138,14 +138,6 @@ public class ReplicarArchivoHandler implements Handler<PayloadReplicarArchivo> {
             return "";
         }
         return nombreArchivoCompleto.substring(ultimoPunto + 1).toLowerCase(Locale.ROOT);
-    }
-
-    private byte[] decodificarBase64(String contenidoCifrado) {
-        try {
-            return Base64.getDecoder().decode(contenidoCifrado);
-        } catch (IllegalArgumentException e) {
-            return contenidoCifrado.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        }
     }
 
     private Respuesta<String> crearRespuestaExito(String texto) {

@@ -34,6 +34,17 @@ public final class CryptoUtil {
         }
     }
 
+    public static byte[] aesDecryptBase64(String base64Cifrado) {
+        try {
+            byte[] cipherBytes = Base64.getDecoder().decode(base64Cifrado);
+            Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION);
+            cipher.init(Cipher.DECRYPT_MODE, buildKey());
+            return cipher.doFinal(cipherBytes);
+        } catch (Exception e) {
+            throw new IllegalStateException("No fue posible descifrar el contenido con AES", e);
+        }
+    }
+
     private static SecretKeySpec buildKey() {
         byte[] keyBytes = CryptoConfig.getAesKey().getBytes(StandardCharsets.UTF_8);
         byte[] normalized = Arrays.copyOf(keyBytes, 16);

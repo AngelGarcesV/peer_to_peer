@@ -1,6 +1,7 @@
 package com.arquitectura.dominio.handlers;
 
 import com.arquitectura.aplicacion.router.Handler;
+import com.arquitectura.aplicacion.sesion.GestorServidoresPeer;
 import com.arquitectura.dominio.repositorios.JpaMensajeRepository;
 import com.arquitectura.dominio.repositorios.MensajeRepository;
 import com.arquitectura.mensajeria.Mensaje;
@@ -54,12 +55,29 @@ public class ReplicarMensajeHandler implements Handler<PayloadReplicarMensaje> {
                 + " | autor=" + payload.getAutor()
                 + " | origen=" + servidorOrigen);
 
+        // Propagacion a peers adicionales (fan-out, idempotente por existePorId)
+        GestorServidoresPeer gestorPeers = GestorServidoresPeer.getInstance();
+        if (!gestorPeers.obtenerPeersConectados().isEmpty()) {
+            Mensaje<PayloadReplicarMensaje> msgReplica = construirMensajeReplica(payload);
+            gestorPeers.enviarATodos(msgReplica);
+            LOGGER.info(() -> "Mensaje replicado propagado a peers adicionales: id=" + payload.getId());
+        }
+
         return crearRespuestaExito("Mensaje replicado: " + payload.getId());
     }
 
     @Override
     public Class<PayloadReplicarMensaje> getPayloadClass() {
         return PayloadReplicarMensaje.class;
+    }
+
+    private Mensaje<PayloadReplicarMensaje> construirMensajeReplica(PayloadReplicarMensaje payload) {
+        Mensaje<PayloadReplicarMensaje> msg = new Mensaje<>();
+        msg.setTipo(TipoMensaje.REQUEST);
+        msg.setAccion(Accion.REPLICAR_MENSAJE);
+        msg.setMetadata(crearMetadata());
+        msg.setPayload(payload);
+        return msg;
     }
 
     private Respuesta<String> crearRespuestaExito(String texto) {

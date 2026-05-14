@@ -25,6 +25,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -49,6 +51,7 @@ public class GestorServidoresPeer {
     private int servidorPuerto;
 
     private final ExecutorService executor = Executors.newCachedThreadPool();
+    private final ScheduledExecutorService reconexionScheduler = Executors.newSingleThreadScheduledExecutor();
 
     private GestorServidoresPeer() {
     }
@@ -97,6 +100,28 @@ public class GestorServidoresPeer {
                 }
             });
         }
+        iniciarReconexionPeriodica();
+    }
+
+    private void iniciarReconexionPeriodica() {
+        reconexionScheduler.scheduleAtFixedRate(() -> {
+            for (ConexionPeer peer : peers.values()) {
+                EstadoPeer estado = peer.getEstado();
+                if (estado == EstadoPeer.OPEN || estado == EstadoPeer.HALF_OPEN) {
+                    final ConexionPeer p = peer;
+                    executor.submit(() -> {
+                        try {
+                            LOGGER.info("Reconexion periodica a peer: " + p.getConfig().getServidorId());
+                            conectarConHandshake(p);
+                        } catch (Exception e) {
+                            p.registrarFallo();
+                            LOGGER.log(Level.WARNING, "Error en reconexion periodica a peer "
+                                    + p.getConfig().getServidorId(), e);
+                        }
+                    });
+                }
+            }
+        }, 60, 60, TimeUnit.SECONDS);
     }
 
     private void conectarConHandshake(ConexionPeer peer) {
