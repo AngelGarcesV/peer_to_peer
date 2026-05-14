@@ -121,7 +121,7 @@ public class GestorServidoresPeer {
                     });
                 }
             }
-        }, 60, 60, TimeUnit.SECONDS);
+        }, 15, 15, TimeUnit.SECONDS);
     }
 
     private void conectarConHandshake(ConexionPeer peer) {
