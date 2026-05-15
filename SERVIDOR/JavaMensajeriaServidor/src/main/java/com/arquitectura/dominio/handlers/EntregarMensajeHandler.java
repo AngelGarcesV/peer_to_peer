@@ -99,6 +99,18 @@ public class EntregarMensajeHandler implements Handler<PayloadEntregarMensaje> {
             }
         }
 
+        // Último recurso: broadcast a todos los peers
+        Mensaje<PayloadEntregarMensaje> mensajeReenvio = new Mensaje<>();
+        mensajeReenvio.setTipo(TipoMensaje.REQUEST);
+        mensajeReenvio.setAccion(Accion.ENTREGAR_MENSAJE);
+        mensajeReenvio.setMetadata(crearMetadata());
+        mensajeReenvio.setPayload(payload);
+
+        LOGGER.warning(() -> "Destinatario " + destinatario + " no encontrado, intentando broadcast a peers");
+        for (com.arquitectura.aplicacion.sesion.ConexionPeer peer : gestorPeers.obtenerPeersConectados()) {
+            gestorPeers.enviarAPeer(peer.getConfig().getServidorId(), mensajeReenvio);
+        }
+
         // Destinatario no encontrado en ningun lado
         LOGGER.warning(() -> "Destinatario no encontrado localmente ni en peers: " + destinatario);
         return crearRespuesta("Destinatario no encontrado: " + destinatario);

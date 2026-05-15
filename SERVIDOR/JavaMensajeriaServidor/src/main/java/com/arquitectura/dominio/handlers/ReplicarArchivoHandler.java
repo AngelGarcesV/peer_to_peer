@@ -1,6 +1,7 @@
 package com.arquitectura.dominio.handlers;
 
 import com.arquitectura.aplicacion.router.Handler;
+import com.arquitectura.aplicacion.sesion.GestorServidoresPeer;
 import com.arquitectura.infraestructura.seguridad.CryptoUtil;
 import com.arquitectura.dominio.repositorios.ArchivoRecibidoRepository;
 import com.arquitectura.dominio.repositorios.JpaArchivoRecibidoRepository;
@@ -80,6 +81,14 @@ public class ReplicarArchivoHandler implements Handler<PayloadReplicarArchivo> {
                 + " | nombre=" + payload.getNombreArchivo()
                 + " | origen=" + servidorOrigen);
 
+        // Fan-out a peers adicionales (idempotente por existePorId)
+        GestorServidoresPeer gestorPeers = GestorServidoresPeer.getInstance();
+        if (!gestorPeers.obtenerPeersConectados().isEmpty()) {
+            Mensaje<PayloadReplicarArchivo> msgReplica = construirMensajeReplica(payload);
+            gestorPeers.enviarATodos(msgReplica);
+            LOGGER.info(() -> "Archivo replicado propagado a peers adicionales: id=" + payload.getId());
+        }
+
         return crearRespuestaExito("Archivo replicado: " + payload.getId());
     }
 
@@ -151,6 +160,15 @@ public class ReplicarArchivoHandler implements Handler<PayloadReplicarArchivo> {
         respuesta.setEstado(Estado.EXITO);
         respuesta.setMensaje(mensajeRespuesta);
         return respuesta;
+    }
+
+    private Mensaje<PayloadReplicarArchivo> construirMensajeReplica(PayloadReplicarArchivo payload) {
+        Mensaje<PayloadReplicarArchivo> msg = new Mensaje<>();
+        msg.setTipo(TipoMensaje.REQUEST);
+        msg.setAccion(Accion.REPLICAR_ARCHIVO);
+        msg.setMetadata(crearMetadata());
+        msg.setPayload(payload);
+        return msg;
     }
 
     private Metadata crearMetadata() {

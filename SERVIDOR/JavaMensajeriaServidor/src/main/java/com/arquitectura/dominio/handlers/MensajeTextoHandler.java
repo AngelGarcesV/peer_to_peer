@@ -132,8 +132,12 @@ public class MensajeTextoHandler implements Handler<PayloadEnviarMensaje> {
                     final String peerOwnerFinal = peerOwner;
                     boolean ok = peers.enviarAPeer(peerOwnerFinal, msgEntregar);
                     if (!ok) {
-                        LOGGER.warning("No se pudo entregar mensaje unicast al peer " + peerOwnerFinal
-                                + " para destinatario: " + destinatario);
+                        LOGGER.warning("Envio directo fallido a " + peerOwnerFinal + ", intentando via otros peers");
+                        for (com.arquitectura.aplicacion.sesion.ConexionPeer peer : peers.obtenerPeersConectados()) {
+                            if (!peer.getConfig().getServidorId().equals(peerOwnerFinal)) {
+                                peers.enviarAPeer(peer.getConfig().getServidorId(), msgEntregar);
+                            }
+                        }
                     }
                 } else {
                     LOGGER.warning("Destinatario no encontrado ni local ni remoto: " + destinatario);

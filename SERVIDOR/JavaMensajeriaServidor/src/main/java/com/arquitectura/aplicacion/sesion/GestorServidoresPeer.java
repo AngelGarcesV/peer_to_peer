@@ -202,14 +202,8 @@ public class GestorServidoresPeer {
             final ConexionPeer p = peer;
             executor.submit(() -> {
                 try {
-                    EstadoPeer estado = p.getEstado();
-                    if (estado == EstadoPeer.OPEN) {
-                        boolean rehabilitado = intentarRehabilitacion(p);
-                        if (!rehabilitado) {
-                            LOGGER.fine("Peer OPEN no rehabilitado, omitiendo: " + p.getConfig().getServidorId());
-                            return;
-                        }
-                    }
+                    // Intentar siempre — cada mensaje abre su propio socket.
+                    // El exito rehabilita el peer; el fallo lo registra.
                     boolean ok = enviarMensajeAPeer(p, mensaje);
                     if (ok) {
                         p.marcarConectado();
@@ -241,20 +235,14 @@ public class GestorServidoresPeer {
             return false;
         }
 
-        EstadoPeer estado = peer.getEstado();
-        if (estado == EstadoPeer.OPEN) {
-            boolean rehabilitado = intentarRehabilitacion(peer);
-            if (!rehabilitado) {
-                LOGGER.warning("Peer OPEN y rehabilitacion fallida: " + servidorId);
-                return false;
-            }
-        }
-
+        // Intentar envio directo siempre (cada mensaje abre su propio socket).
+        // Si el peer estaba OPEN y el envio tiene exito, se rehabilita automaticamente.
         boolean ok = enviarMensajeAPeer(peer, mensaje);
         if (ok) {
             peer.marcarConectado();
         } else {
             peer.registrarFallo();
+            LOGGER.warning("Fallo al enviar mensaje a peer " + servidorId);
         }
         return ok;
     }
