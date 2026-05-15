@@ -48,21 +48,21 @@ public class MensajeTextoHandler implements Handler<PayloadEnviarMensaje> {
 
         String ipRemitente = ContextoSolicitud.obtenerIpRemitente();
         String texto = payload.getContenido();
+        String destinatario = payload.getDestinatario();
         LocalDateTime fechaEnvio = resolverFecha(mensaje);
         String mensajeId = resolverMensajeId(mensaje);
         byte[] contenidoBytes = texto.getBytes(StandardCharsets.UTF_8);
         String hashSha256 = CryptoUtil.sha256Base64(contenidoBytes);
         String contenidoCifrado = CryptoUtil.aesEncryptBase64(contenidoBytes);
 
-        mensajeRepository.guardar(mensajeId, remitente, ipRemitente, texto, hashSha256, contenidoCifrado, fechaEnvio, null, null);
+        mensajeRepository.guardar(mensajeId, remitente, ipRemitente, texto, hashSha256, contenidoCifrado, fechaEnvio, null, destinatario);
 
-        LOGGER.info(() -> "Mensaje de texto recibido | Remitente: %s | IP: %s | Hash: %s "
-                .formatted(remitente, ipRemitente, hashSha256));
+        LOGGER.info(() -> "Mensaje de texto recibido | Remitente: %s | IP: %s | Hash: %s | Destinatario: %s"
+                .formatted(remitente, ipRemitente, hashSha256, destinatario != null ? destinatario : "broadcast"));
 
         System.out.println("[SERVIDOR] Mensaje recibido de " + remitente + " (" + ipRemitente + "): " + texto);
 
         // Replication — fire-and-forget
-        String destinatario = payload.getDestinatario();
         replicarMensaje(mensajeId, remitente, texto, fechaEnvio, destinatario);
 
         Mensaje<String> mensajeRespuesta = new Mensaje<>();
