@@ -7,6 +7,7 @@ import com.arquitectura.mensajeria.enums.Accion;
 import com.arquitectura.mensajeria.enums.TipoMensaje;
 import com.arquitectura.mensajeria.payload.PayloadClienteRemoto;
 import com.arquitectura.mensajeria.payload.PayloadRegistrarServidor;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -167,15 +168,15 @@ public class GestorServidoresPeer {
 
     private void descubrirPeersTransitivos(String respuestaJson) {
         try {
-            com.fasterxml.jackson.databind.JsonNode root = JsonUtil.getMapper().readTree(respuestaJson);
-            com.fasterxml.jackson.databind.JsonNode payload = root.path("mensaje").path("payload");
+            JsonNode root = JsonUtil.getMapper().readTree(respuestaJson);
+            JsonNode payload = root.path("mensaje").path("payload");
 
             if (payload.isMissingNode() || payload.isNull()) return;
 
-            com.fasterxml.jackson.databind.JsonNode peersNode = payload.path("peersConocidos");
+            JsonNode peersNode = payload.path("peersConocidos");
             if (peersNode.isMissingNode() || !peersNode.isArray()) return;
 
-            for (com.fasterxml.jackson.databind.JsonNode peerNode : peersNode) {
+            for (JsonNode peerNode : peersNode) {
                 String pid = peerNode.path("servidorId").asText();
                 String phost = peerNode.path("host").asText();
                 int ppuerto = peerNode.path("puerto").asInt();
@@ -284,17 +285,22 @@ public class GestorServidoresPeer {
      */
     private String enviarMensajeAPeerYLeerRespuesta(ConexionPeer peer, Mensaje<?> mensaje) {
         PeerConfig config = peer.getConfig();
-        try (Socket socket = new Socket(config.getHost(), config.getPuerto());
-             PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
-             BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+        try {
+            Socket socket = new Socket();
+            socket.connect(new java.net.InetSocketAddress(config.getHost(), config.getPuerto()), 5_000);
+            socket.setSoTimeout(8_000);
+            try (socket;
+                 PrintWriter writer = new PrintWriter(socket.getOutputStream(), true);
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
 
-            String json = JsonUtil.toJson(mensaje);
-            writer.println(json);
-            writer.flush();
+                String json = JsonUtil.toJson(mensaje);
+                writer.println(json);
+                writer.flush();
 
-            String respuesta = reader.readLine();
-            LOGGER.fine("Respuesta de " + config.getServidorId() + ": " + respuesta);
-            return respuesta;
+                String respuesta = reader.readLine();
+                LOGGER.fine("Respuesta de " + config.getServidorId() + ": " + respuesta);
+                return respuesta;
+            }
         } catch (Exception e) {
             LOGGER.log(Level.FINE, "Error de red con peer " + config.getServidorId() + ": " + e.getMessage());
             return null;

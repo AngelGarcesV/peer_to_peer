@@ -93,15 +93,15 @@ public class MensajeTextoHandler implements Handler<PayloadEnviarMensaje> {
         List<com.arquitectura.aplicacion.sesion.ConexionPeer> todosLosPeers = peers.obtenerPeers();
         List<com.arquitectura.aplicacion.sesion.ConexionPeer> peersConectados = peers.obtenerPeersConectados();
 
-        LOGGER.info(() -> "[MSG-DIAG] Peers en mapa: " + todosLosPeers.size()
-                + " | Peers CLOSED: " + peersConectados.size()
+        LOGGER.fine(() -> "Peers en mapa: " + todosLosPeers.size()
+                + " | Peers conectados: " + peersConectados.size()
                 + " | Detalle: " + todosLosPeers.stream()
                     .map(p -> p.getConfig().getServidorId() + "=" + p.getEstado())
                     .collect(java.util.stream.Collectors.joining(", ")));
 
         if (destinatario == null || destinatario.isBlank()) {
             // Broadcast
-            LOGGER.info(() -> "[MSG-DIAG] Broadcast de '" + autor + "': enviando a todos los peers");
+            LOGGER.fine(() -> "Broadcast de '" + autor + "': enviando a todos los peers");
             PayloadReplicarMensaje replicaPayload = new PayloadReplicarMensaje();
             replicaPayload.setId(mensajeId);
             replicaPayload.setAutor(autor);
@@ -112,15 +112,15 @@ public class MensajeTextoHandler implements Handler<PayloadEnviarMensaje> {
 
             Mensaje<PayloadReplicarMensaje> msgReplica = buildS2SMensaje(Accion.REPLICAR_MENSAJE, replicaPayload);
             peers.enviarATodos(msgReplica);
-            LOGGER.info(() -> "[MSG-DIAG] Broadcast disparado para: " + mensajeId);
+            LOGGER.fine(() -> "Broadcast disparado para: " + mensajeId);
         } else {
             // Unicast
-            LOGGER.info(() -> "[MSG-DIAG] Unicast de '" + autor + "' para destinatario: '" + destinatario + "'");
+            LOGGER.fine(() -> "Unicast de '" + autor + "' para destinatario: '" + destinatario + "'");
             if (gestorSesiones.existeSesionActiva(destinatario)) {
-                LOGGER.info(() -> "[MSG-DIAG] Destinatario '" + destinatario + "' es LOCAL — quedara en DB para poll");
+                LOGGER.fine(() -> "Destinatario '" + destinatario + "' es LOCAL — quedara en DB para poll");
             } else {
                 List<PayloadClienteRemoto> remotos = peers.obtenerTodosClientesRemotos();
-                LOGGER.info(() -> "[MSG-DIAG] Cache de clientes remotos: " + remotos.size()
+                LOGGER.fine(() -> "Cache de clientes remotos: " + remotos.size()
                         + " | " + remotos.stream()
                             .map(r -> r.getUsername() + "@" + r.getServidorOrigen())
                             .collect(java.util.stream.Collectors.joining(", ")));
@@ -135,7 +135,7 @@ public class MensajeTextoHandler implements Handler<PayloadEnviarMensaje> {
 
                 if (peerOwner != null) {
                     final String peerOwnerFinal = peerOwner;
-                    LOGGER.info(() -> "[MSG-DIAG] Destinatario '" + destinatario + "' encontrado en peer: " + peerOwnerFinal);
+                    LOGGER.fine(() -> "Destinatario '" + destinatario + "' encontrado en peer: " + peerOwnerFinal);
                     PayloadEntregarMensaje entregarPayload = new PayloadEntregarMensaje();
                     entregarPayload.setDestinatario(destinatario);
                     entregarPayload.setAutor(autor);
@@ -145,18 +145,18 @@ public class MensajeTextoHandler implements Handler<PayloadEnviarMensaje> {
 
                     Mensaje<PayloadEntregarMensaje> msgEntregar = buildS2SMensaje(Accion.ENTREGAR_MENSAJE, entregarPayload);
                     boolean ok = peers.enviarAPeer(peerOwnerFinal, msgEntregar);
-                    LOGGER.info(() -> "[MSG-DIAG] enviarAPeer(" + peerOwnerFinal + ") resultado: " + (ok ? "OK" : "FALLO"));
+                    LOGGER.fine(() -> "enviarAPeer(" + peerOwnerFinal + ") resultado: " + (ok ? "OK" : "FALLO"));
                     if (!ok) {
-                        LOGGER.warning("[MSG-DIAG] Envio directo fallido a " + peerOwnerFinal + ", intentando via otros peers");
+                        LOGGER.warning("Envio directo fallido a " + peerOwnerFinal + ", intentando via otros peers");
                         for (com.arquitectura.aplicacion.sesion.ConexionPeer peer : peers.obtenerPeersConectados()) {
                             if (!peer.getConfig().getServidorId().equals(peerOwnerFinal)) {
                                 boolean okFallback = peers.enviarAPeer(peer.getConfig().getServidorId(), msgEntregar);
-                                LOGGER.info(() -> "[MSG-DIAG] Fallback via " + peer.getConfig().getServidorId() + ": " + (okFallback ? "OK" : "FALLO"));
+                                LOGGER.fine(() -> "Fallback via " + peer.getConfig().getServidorId() + ": " + (okFallback ? "OK" : "FALLO"));
                             }
                         }
                     }
                 } else {
-                    LOGGER.warning("[MSG-DIAG] Destinatario '" + destinatario + "' NO encontrado ni local ni en cache remoto");
+                    LOGGER.warning("Destinatario '" + destinatario + "' NO encontrado ni local ni en cache remoto");
                 }
             }
         }

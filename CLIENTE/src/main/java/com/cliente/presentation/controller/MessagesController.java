@@ -173,10 +173,17 @@ public class MessagesController {
         Label timestampLabel = new Label(message.getTimestamp() != null ? message.getTimestamp() : "");
         timestampLabel.getStyleClass().add("message-timestamp");
 
-        header.getChildren().addAll(clientLabel, origenLabel, spacer, timestampLabel);
+        // ── Badge PRIVADO / BROADCAST ──
+        boolean esPrivado = message.getDestinatario() != null && !message.getDestinatario().isBlank();
+        Label privacyBadge = new Label(esPrivado ? "PRIVADO" : "BROADCAST");
+        privacyBadge.setStyle(esPrivado
+            ? "-fx-background-color: #d97706; -fx-text-fill: white; -fx-padding: 2 6 2 6; -fx-background-radius: 8; -fx-font-size: 10;"
+            : "-fx-background-color: #6b7280; -fx-text-fill: white; -fx-padding: 2 6 2 6; -fx-background-radius: 8; -fx-font-size: 10;");
+
+        header.getChildren().addAll(clientLabel, origenLabel, privacyBadge, spacer, timestampLabel);
 
         // ── Destinatario line (only shown for unicast messages) ──
-        if (message.getDestinatario() != null && !message.getDestinatario().isBlank()) {
+        if (esPrivado) {
             Label destLabel = new Label("→ " + message.getDestinatario());
             destLabel.getStyleClass().add("message-hash");
             destLabel.setStyle("-fx-text-fill: #d97706; -fx-font-style: italic;");

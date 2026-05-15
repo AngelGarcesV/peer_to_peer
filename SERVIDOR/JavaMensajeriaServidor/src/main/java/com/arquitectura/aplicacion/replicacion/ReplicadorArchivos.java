@@ -51,35 +51,9 @@ public class ReplicadorArchivos {
     public void replicar(ArchivoRecibidoModel archivo, String servidorId) {
         GestorServidoresPeer peers = GestorServidoresPeer.getInstance();
         if (peers.obtenerPeersConectados().isEmpty()) return;
-
-        if (archivo.getContenidoCifrado() != null && !archivo.getContenidoCifrado().isBlank()) {
-            replicarPorJson(archivo, servidorId, peers);
-        } else {
-            replicarPorStream(archivo, servidorId, peers);
-        }
+        replicarPorStream(archivo, servidorId, peers);
+        
     }
-
-    // -------------------------------------------------------------------------
-    // JSON replication (small files)
-    // -------------------------------------------------------------------------
-
-    private void replicarPorJson(ArchivoRecibidoModel archivo, String servidorId, GestorServidoresPeer peers) {
-        PayloadReplicarArchivo payload = new PayloadReplicarArchivo();
-        payload.setId(archivo.getId());
-        payload.setRemitente(archivo.getRemitente());
-        payload.setNombreArchivo(archivo.getNombreArchivo());
-        payload.setExtension(archivo.getExtension());
-        payload.setContenidoCifrado(archivo.getContenidoCifrado());
-        payload.setHashSha256(archivo.getHashSha256());
-        payload.setTamano(archivo.getTamano());
-        payload.setServidorOrigen(servidorId);
-        payload.setFechaRecepcion(archivo.getFechaRecepcion());
-
-        Mensaje<PayloadReplicarArchivo> msg = buildMensaje(Accion.REPLICAR_ARCHIVO, payload);
-        peers.enviarATodos(msg);
-        LOGGER.info(() -> "Archivo replicado por JSON: " + archivo.getNombreArchivo());
-    }
-
     // -------------------------------------------------------------------------
     // Stream replication (large files)
     // -------------------------------------------------------------------------
