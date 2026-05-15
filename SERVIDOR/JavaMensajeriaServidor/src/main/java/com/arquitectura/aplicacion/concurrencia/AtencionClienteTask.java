@@ -48,20 +48,20 @@ public class AtencionClienteTask implements Runnable {
     @Override
     public void run() {
         String threadName = Thread.currentThread().getName();
-        LOGGER.info(() -> "[" + threadName + "] Worker iniciando atencion de cliente");
+        LOGGER.fine(() -> "[" + threadName + "] Worker iniciando atencion de cliente");
         try {
             // Para TCP, el paquete llega con socket pero sin datos (el main solo hizo accept).
             // La lectura real ocurre acá, en el worker thread.
             PaqueteDatos paqueteReal = resolverPaquete();
             if (paqueteReal == null) {
-                LOGGER.info(() -> "[" + threadName + "] Paquete nulo (streaming o conexion vacia). Liberando worker.");
+                LOGGER.fine(() -> "[" + threadName + "] Paquete nulo (streaming o conexion vacia). Liberando worker.");
                 return;
             }
 
-            LOGGER.info(() -> "[" + threadName + "] Procesando mensaje JSON del cliente");
+            LOGGER.fine(() -> "[" + threadName + "] Procesando mensaje JSON del cliente");
             String respuesta = procesador.procesar(paqueteReal);
             sender.enviar(paqueteReal, respuesta, transporte);
-            LOGGER.info(() -> "[" + threadName + "] Respuesta enviada correctamente");
+            LOGGER.fine(() -> "[" + threadName + "] Respuesta enviada correctamente");
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "[" + threadName + "] Error atendiendo cliente", e);
         } finally {
@@ -72,7 +72,7 @@ public class AtencionClienteTask implements Runnable {
             limpiarEstado();
 
             if (retornoAlPool != null) {
-                LOGGER.info(() -> "[" + threadName + "] Devolviendo tarea al pool");
+                LOGGER.fine(() -> "[" + threadName + "] Devolviendo tarea al pool");
                 retornoAlPool.run();
             } else {
                 LOGGER.warning(() -> "[" + threadName + "] onFinish era null — tarea NO devuelta al pool!");

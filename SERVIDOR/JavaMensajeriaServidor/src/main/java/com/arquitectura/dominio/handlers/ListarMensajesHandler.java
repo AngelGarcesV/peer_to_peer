@@ -52,7 +52,7 @@ public class ListarMensajesHandler implements Handler<Object> {
                 resultado.add(map);
             }
 
-            LOGGER.info(() -> "Listando mensajes: %d registros".formatted(resultado.size()));
+            LOGGER.fine(() -> "Listando mensajes: %d registros".formatted(resultado.size()));
 
             Mensaje<List<Map<String, Object>>> mensajeRespuesta = new Mensaje<>();
             mensajeRespuesta.setTipo(TipoMensaje.RESPONSE);

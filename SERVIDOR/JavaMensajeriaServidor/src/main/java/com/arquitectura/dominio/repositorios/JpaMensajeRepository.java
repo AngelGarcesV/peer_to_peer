@@ -70,7 +70,7 @@ public class JpaMensajeRepository implements MensajeRepository {
         EntityManager em = HibernateManager.crearEntityManager();
         try {
             return em.createQuery(
-                "SELECT m FROM MensajeModel m WHERE m.destinatario IS NULL OR m.destinatario = :username ORDER BY m.fechaEnvio ASC",
+                "SELECT m FROM MensajeModel m WHERE m.destinatario IS NULL OR m.destinatario = :username ORDER BY m.fechaEnvio DESC",
                 MensajeModel.class
             ).setParameter("username", username).getResultList();
         } finally {
