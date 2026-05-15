@@ -73,9 +73,14 @@ public class EnviarArchivoHandler implements Handler<PayloadEnviarArchivo> {
                     null
             );
 
-            // Replication — fire-and-forget
-            archivoRecibidoRepository.buscarPorId(mensajeId).ifPresent(modelo ->
-                    new ReplicadorArchivos().replicar(modelo, GestorServidoresPeer.getInstance().getServidorId()));
+            // Replication — fire-and-forget (solo si no es unicast a cliente específico)
+            if (payload.getClientIdDestino() == null || payload.getClientIdDestino().isBlank()) {
+                archivoRecibidoRepository.buscarPorId(mensajeId).ifPresent(modelo ->
+                        new ReplicadorArchivos().replicar(modelo, GestorServidoresPeer.getInstance().getServidorId()));
+            } else {
+                LOGGER.info(() -> "Archivo unicast para [" + payload.getClientIdDestino()
+                        + "] — replicación S2S omitida | " + nombreFinalArchivo);
+            }
 
             LOGGER.info(() -> "Archivo recibido: " + nombreFinalArchivo + " desde " + remitente + " ("
                     + ipRemitente + ") | Hash: " + hashSha256);

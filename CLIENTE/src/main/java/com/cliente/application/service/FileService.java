@@ -61,6 +61,10 @@ public class FileService {
     }
 
     public Task<Void> createUploadTask(File file) {
+        return createUploadTask(file, null);
+    }
+
+    public Task<Void> createUploadTask(File file, String destinatario) {
         return new Task<>() {
             @Override
             protected Void call() throws Exception {
@@ -80,6 +84,9 @@ public class FileService {
 
                 PayloadIniciarStream iniciarPayload = new PayloadIniciarStream(
                         transferId, file.getName(), ext, fileSize, totalChunks, chunkSize);
+                if (destinatario != null && !destinatario.isBlank()) {
+                    iniciarPayload.setClientIdDestino(destinatario);
+                }
                 Mensaje<PayloadIniciarStream> iniciarMsg = ServerJsonUtil.buildRequest(
                         Accion.INICIAR_STREAM, iniciarPayload, clientId, proto);
 
@@ -103,6 +110,9 @@ public class FileService {
                 updateMessage("Verificando integridad de " + file.getName() + "...");
                 PayloadFinalizarStream finalizarPayload = new PayloadFinalizarStream(
                         transferId, hashFinal, totalChunks);
+                if (destinatario != null && !destinatario.isBlank()) {
+                    finalizarPayload.setClientIdDestino(destinatario);
+                }
                 Mensaje<PayloadFinalizarStream> finalizarMsg = ServerJsonUtil.buildRequest(
                         Accion.FINALIZAR_STREAM, finalizarPayload, clientId, proto);
 

@@ -12,6 +12,7 @@ com\cliente\presentation\controller\MainController.class
 com\cliente\infrastructure\socket\TcpSocketClient$StreamProgressCallback.class
 com\cliente\presentation\controller\ClientsController$2.class
 com\cliente\presentation\controller\FilesController$1.class
+com\cliente\presentation\controller\ServidoresController$ServidorItem.class
 com\cliente\presentation\controller\PanelController.class
 com\cliente\application\service\MessageService.class
 com\cliente\presentation\controller\SendMessageDialogController.class
@@ -21,10 +22,12 @@ com\cliente\presentation\controller\ConnectionController.class
 com\cliente\presentation\controller\UploadController$1.class
 com\cliente\presentation\controller\LogsController.class
 com\cliente\presentation\controller\UploadController.class
+com\cliente\presentation\controller\ServidoresController$1.class
 com\cliente\domain\model\LogEntry.class
 com\cliente\domain\model\PaginatedResult.class
 com\cliente\infrastructure\persistence\LocalDocumentRepository.class
 com\cliente\presentation\controller\FilesController.class
+com\cliente\presentation\controller\ServidoresController.class
 module-info.class
 com\cliente\infrastructure\protocol\ServerJsonUtil.class
 com\cliente\application\service\ClientService.class

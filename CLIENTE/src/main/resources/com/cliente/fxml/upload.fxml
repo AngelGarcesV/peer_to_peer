@@ -14,6 +14,14 @@
                styleClass="view-subtitle"/>
     </VBox>
 
+    <!-- Destinatario unicast -->
+    <VBox spacing="4">
+        <Label text="Destinatario (vacío = todos)" styleClass="section-label"/>
+        <TextField fx:id="destinatarioField"
+                   promptText="ID del cliente destino (dejar vacío para broadcast)"
+                   styleClass="text-field"/>
+    </VBox>
+
     <!-- Drop zone -->
     <VBox fx:id="dropZone" styleClass="drop-zone" alignment="CENTER" spacing="12"
           prefHeight="160">

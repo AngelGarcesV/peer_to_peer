@@ -27,6 +27,8 @@ public class UploadController {
     @FXML private Button cancelButton;
     @FXML private Button uploadButton;
     @FXML private Label dropLabel;
+    /** Campo de texto para el ID de cliente destinatario. Vacío = broadcast. */
+    @FXML private TextField destinatarioField;
 
     private final ObservableList<UploadItem> queue = FXCollections.observableArrayList();
     private final ExecutorService executor = Executors.newFixedThreadPool(3);
@@ -113,7 +115,11 @@ public class UploadController {
         item.setStatus("En cola...");
         uploadTable.refresh();
 
-        Task<Void> task = FileService.getInstance().createUploadTask(item.getFile());
+        String destinatario = (destinatarioField != null && destinatarioField.getText() != null
+                && !destinatarioField.getText().isBlank())
+                ? destinatarioField.getText().trim() : null;
+
+        Task<Void> task = FileService.getInstance().createUploadTask(item.getFile(), destinatario);
 
         task.progressProperty().addListener((obs, old, newVal) -> {
             double pct = newVal.doubleValue();

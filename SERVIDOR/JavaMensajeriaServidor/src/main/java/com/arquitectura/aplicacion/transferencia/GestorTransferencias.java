@@ -251,6 +251,9 @@ public class GestorTransferencias {
         /** Hash SHA-256 esperado (enviado por el peer en el payload de control). */
         private String hashEsperado;
 
+        /** ID del cliente destino para unicast. null = broadcast. */
+        private String clientIdDestino;
+
         EstadoTransferencia(String transferId, String nombreArchivo, String extension,
                             long tamanoTotal, long totalChunks, Path rutaTemporal) {
             this.transferId = transferId;
@@ -334,5 +337,8 @@ public class GestorTransferencias {
 
         public String getHashEsperado() { return hashEsperado; }
         public void setHashEsperado(String hashEsperado) { this.hashEsperado = hashEsperado; }
+
+        public String getClientIdDestino() { return clientIdDestino; }
+        public void setClientIdDestino(String clientIdDestino) { this.clientIdDestino = clientIdDestino; }
     }
 }

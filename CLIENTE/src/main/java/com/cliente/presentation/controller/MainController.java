@@ -24,6 +24,7 @@ public class MainController {
     @FXML private Button btnFiles;
     @FXML private Button btnMessages;
     @FXML private Button btnLogs;
+    @FXML private Button btnServidores;
 
     private Button activeNavButton;
 
@@ -56,6 +57,11 @@ public class MainController {
     @FXML public void showLogs() {
         activateNav(btnLogs);
         loadView("fxml/logs.fxml");
+    }
+
+    @FXML public void showServidores() {
+        activateNav(btnServidores);
+        loadView("fxml/servidores.fxml");
     }
 
     @FXML public void showUpload() {

@@ -105,9 +105,14 @@ public class FinalizarStreamHandler implements Handler<PayloadFinalizarStream> {
                     null
             );
 
-            // Replication — fire-and-forget
-            repositorio.buscarPorId(transferId).ifPresent(modelo ->
-                    new ReplicadorArchivos().replicar(modelo, GestorServidoresPeer.getInstance().getServidorId()));
+            // Replication — fire-and-forget (solo si no es unicast a cliente específico)
+            if (estado.getClientIdDestino() == null) {
+                repositorio.buscarPorId(transferId).ifPresent(modelo ->
+                        new ReplicadorArchivos().replicar(modelo, GestorServidoresPeer.getInstance().getServidorId()));
+            } else {
+                LOGGER.info(() -> "Stream unicast a [" + estado.getClientIdDestino()
+                        + "] — replicación S2S omitida para transferencia " + transferId);
+            }
 
             gestorTransferencias.eliminar(transferId);
 

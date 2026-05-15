@@ -75,6 +75,14 @@ public class IniciarStreamHandler implements Handler<PayloadIniciarStream> {
                     rutaTemporal
             );
 
+            // Propagar clientIdDestino para routing unicast al finalizar
+            if (payload.getClientIdDestino() != null && !payload.getClientIdDestino().isBlank()) {
+                GestorTransferencias.EstadoTransferencia estado = gestorTransferencias.obtener(transferId);
+                if (estado != null) {
+                    estado.setClientIdDestino(payload.getClientIdDestino());
+                }
+            }
+
             LOGGER.info(() -> "Stream iniciado: " + transferId
                     + " | archivo: " + payload.getNombreArchivo()
                     + " | tamaño: " + payload.getTamanoTotal() + " bytes"

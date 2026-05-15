@@ -1,6 +1,7 @@
 package com.cliente.presentation.controller;
 
 import com.cliente.application.service.LogService;
+import com.cliente.application.service.ServerService;
 import com.cliente.domain.model.LogEntry;
 import com.cliente.domain.model.PaginatedResult;
 import javafx.application.Platform;
@@ -14,9 +15,13 @@ import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class LogsController {
+
+    private static final String FUENTE_LOCAL = "Local";
 
     @FXML private TableView<LogEntry> logsTable;
     @FXML private TableColumn<LogEntry, String> colDate;
@@ -24,6 +29,7 @@ public class LogsController {
     @FXML private TableColumn<LogEntry, String> colDescription;
     @FXML private Label statusLabel;
     @FXML private Button refreshButton;
+    @FXML private ComboBox<String> sourceCombo;
 
     private int paginaActual = 0;
     private int tamanoPagina = 50;
@@ -43,8 +49,41 @@ public class LogsController {
         colDescription.prefWidthProperty().bind(
             logsTable.widthProperty().subtract(colDate.getWidth() + colTime.getWidth() + 20));
 
+        initSourceCombo();
         addPaginationBar();
         loadLogs();
+    }
+
+    private void initSourceCombo() {
+        if (sourceCombo == null) return; // modo sin FXML actualizado
+
+        List<String> opciones = new ArrayList<>();
+        opciones.add(FUENTE_LOCAL);
+
+        new Thread(() -> {
+            try {
+                List<Map<String, Object>> servers = ServerService.getInstance().listarServidores();
+                List<String> ids = new ArrayList<>();
+                for (Map<String, Object> m : servers) {
+                    Object id = m.get("servidorId");
+                    if (id != null) ids.add(id.toString());
+                }
+                Platform.runLater(() -> {
+                    opciones.addAll(ids);
+                    sourceCombo.setItems(FXCollections.observableArrayList(opciones));
+                    sourceCombo.getSelectionModel().selectFirst();
+                    sourceCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
+                        paginaActual = 0;
+                        loadLogs();
+                    });
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    sourceCombo.setItems(FXCollections.observableArrayList(opciones));
+                    sourceCombo.getSelectionModel().selectFirst();
+                });
+            }
+        }, "servers-combo-loader").start();
     }
 
     private void addPaginationBar() {
@@ -113,10 +152,17 @@ public class LogsController {
 
         final int pagina = paginaActual;
         final int tamano = tamanoPagina;
+        final String fuente = (sourceCombo != null && sourceCombo.getValue() != null)
+                ? sourceCombo.getValue() : FUENTE_LOCAL;
 
         new Thread(() -> {
             try {
-                PaginatedResult<LogEntry> result = LogService.getInstance().getLogs(pagina, tamano);
+                PaginatedResult<LogEntry> result;
+                if (FUENTE_LOCAL.equals(fuente)) {
+                    result = LogService.getInstance().getLogs(pagina, tamano);
+                } else {
+                    result = LogService.getInstance().getRemoteLogs(fuente, pagina, tamano);
+                }
                 Platform.runLater(() -> {
                     logsTable.setItems(FXCollections.observableArrayList(result.getRegistros()));
                     totalPaginas = Math.max(1, result.getTotalPaginas());
@@ -133,7 +179,9 @@ public class LogsController {
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> {
-                    statusLabel.setText("Error: " + e.getMessage());
+                    statusLabel.setText("Error al cargar logs" +
+                            (FUENTE_LOCAL.equals(fuente) ? "" : " remotos de [" + fuente + "]")
+                            + ": " + e.getMessage());
                     refreshButton.setDisable(false);
                     if (btnAnterior != null) btnAnterior.setDisable(false);
                     if (btnSiguiente != null) btnSiguiente.setDisable(false);

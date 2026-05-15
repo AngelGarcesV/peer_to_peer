@@ -1,7 +1,6 @@
 package com.arquitectura.dominio.handlers;
 
 import com.arquitectura.aplicacion.router.Handler;
-import com.arquitectura.aplicacion.sesion.ConexionPeer;
 import com.arquitectura.aplicacion.sesion.GestorServidoresPeer;
 import com.arquitectura.mensajeria.Mensaje;
 import com.arquitectura.mensajeria.Metadata;
@@ -12,6 +11,7 @@ import com.arquitectura.mensajeria.enums.TipoMensaje;
 import com.arquitectura.mensajeria.payload.PayloadReplicarClientes;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -38,27 +38,8 @@ public class ReplicarClientesHandler implements Handler<PayloadReplicarClientes>
 
         gestorPeers.actualizarCacheClientes(servidorOrigen, clientes);
 
-        LOGGER.info(() -> "Cache de clientes actualizado desde " + servidorOrigen
+        LOGGER.fine(() -> "Cache de clientes actualizado desde " + servidorOrigen
                 + " | clientes=" + cantidad);
-
-        // Fan-out: propagar a todos los peers EXCEPTO el que originó el mensaje
-        // para evitar loops en topologías en anillo (A→C→B→A)
-        List<ConexionPeer> peersConectados = gestorPeers.obtenerPeersConectados();
-        if (!peersConectados.isEmpty()) {
-            Mensaje<PayloadReplicarClientes> msgReplica = new Mensaje<>();
-            msgReplica.setTipo(TipoMensaje.REQUEST);
-            msgReplica.setAccion(Accion.REPLICAR_CLIENTES);
-            msgReplica.setMetadata(crearMetadata());
-            msgReplica.setPayload(payload);
-
-            for (ConexionPeer peer : peersConectados) {
-                if (!peer.getConfig().getServidorId().equals(servidorOrigen)) {
-                    gestorPeers.enviarAPeer(peer.getConfig().getServidorId(), msgReplica);
-                    LOGGER.info(() -> "Clientes de " + servidorOrigen
-                            + " propagados a " + peer.getConfig().getServidorId());
-                }
-            }
-        }
 
         Mensaje<String> mensajeRespuesta = new Mensaje<>();
         mensajeRespuesta.setTipo(TipoMensaje.RESPONSE);

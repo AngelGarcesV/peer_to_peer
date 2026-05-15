@@ -32,6 +32,9 @@
                 <Button fx:id="btnLogs"     text="☰   Logs"
                         onAction="#showLogs"     maxWidth="Infinity"
                         styleClass="nav-item" alignment="CENTER_LEFT"/>
+                <Button fx:id="btnServidores" text="⊕   Servidores"
+                        onAction="#showServidores" maxWidth="Infinity"
+                        styleClass="nav-item" alignment="CENTER_LEFT"/>
             </VBox>
 
             <!-- Spacer -->

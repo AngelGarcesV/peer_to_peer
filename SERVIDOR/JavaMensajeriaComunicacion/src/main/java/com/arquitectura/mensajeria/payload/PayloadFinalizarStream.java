@@ -22,6 +22,12 @@ public class PayloadFinalizarStream {
     /** Cantidad de chunks efectivamente enviados. */
     private long chunksEnviados;
 
+    /**
+     * ID del cliente destino para envío unicast (propagado desde INICIAR_STREAM).
+     * Si es null, el servidor hace broadcast al finalizar.
+     */
+    private String clientIdDestino;
+
     public PayloadFinalizarStream() {}
 
     public PayloadFinalizarStream(String transferId, String hashSha256, long chunksEnviados) {
@@ -38,4 +44,7 @@ public class PayloadFinalizarStream {
 
     public long getChunksEnviados() { return chunksEnviados; }
     public void setChunksEnviados(long chunksEnviados) { this.chunksEnviados = chunksEnviados; }
+
+    public String getClientIdDestino() { return clientIdDestino; }
+    public void setClientIdDestino(String clientIdDestino) { this.clientIdDestino = clientIdDestino; }
 }

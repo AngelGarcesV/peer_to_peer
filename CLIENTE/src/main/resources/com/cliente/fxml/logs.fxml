@@ -16,6 +16,7 @@
         </VBox>
         <Label text="SESIÓN ACTIVA" styleClass="badge-active"/>
         <Label fx:id="statusLabel" styleClass="status-label"/>
+        <ComboBox fx:id="sourceCombo" promptText="Fuente" prefWidth="200"/>
         <Button fx:id="refreshButton" text="↻  Actualizar"
                 onAction="#handleRefresh" styleClass="btn-secondary"/>
         <Button text="⬇  Exportar CSV"

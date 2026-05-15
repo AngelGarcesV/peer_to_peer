@@ -27,6 +27,12 @@ public class PayloadIniciarStream {
     /** Tamaño de cada chunk en bytes (el último puede ser menor). */
     private int tamanoChunk;
 
+    /**
+     * ID del cliente destino para envío unicast.
+     * Si es null, el servidor hace broadcast a todos los clientes.
+     */
+    private String clientIdDestino;
+
     public PayloadIniciarStream() {}
 
     public PayloadIniciarStream(String transferId, String nombreArchivo, String extension,
@@ -56,4 +62,7 @@ public class PayloadIniciarStream {
 
     public int getTamanoChunk() { return tamanoChunk; }
     public void setTamanoChunk(int tamanoChunk) { this.tamanoChunk = tamanoChunk; }
+
+    public String getClientIdDestino() { return clientIdDestino; }
+    public void setClientIdDestino(String clientIdDestino) { this.clientIdDestino = clientIdDestino; }
 }
