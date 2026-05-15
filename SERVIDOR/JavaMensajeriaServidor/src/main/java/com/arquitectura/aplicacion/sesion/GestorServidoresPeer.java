@@ -106,20 +106,26 @@ public class GestorServidoresPeer {
     private void iniciarReconexionPeriodica() {
         reconexionScheduler.scheduleAtFixedRate(() -> {
             for (ConexionPeer peer : peers.values()) {
-                EstadoPeer estado = peer.getEstado();
-                if (estado == EstadoPeer.OPEN || estado == EstadoPeer.HALF_OPEN) {
-                    final ConexionPeer p = peer;
-                    executor.submit(() -> {
-                        try {
-                            LOGGER.info("Reconexion periodica a peer: " + p.getConfig().getServidorId());
-                            conectarConHandshake(p);
-                        } catch (Exception e) {
-                            p.registrarFallo();
-                            LOGGER.log(Level.WARNING, "Error en reconexion periodica a peer "
-                                    + p.getConfig().getServidorId(), e);
-                        }
-                    });
+                if (peer.estaConectado()) continue; // CLOSED — no necesita reconexion
+                final ConexionPeer p = peer;
+                // Backoff: cada 3 intentos fallidos, esperar un ciclo mas antes de reintentar
+                // Esto evita saturar logs con peers permanentemente inalcanzables
+                if (p.getIntentosReconexion() > 0 && p.getIntentosReconexion() % 3 != 0) {
+                    LOGGER.fine("Backoff reconexion para " + p.getConfig().getServidorId()
+                            + " (intento " + p.getIntentosReconexion() + ")");
+                    continue;
                 }
+                executor.submit(() -> {
+                    try {
+                        LOGGER.info("Reconexion periodica a peer: " + p.getConfig().getServidorId()
+                                + " @ " + p.getConfig().getHost() + ":" + p.getConfig().getPuerto());
+                        conectarConHandshake(p);
+                    } catch (Exception e) {
+                        p.registrarFallo();
+                        LOGGER.log(Level.WARNING, "Error en reconexion periodica a peer "
+                                + p.getConfig().getServidorId(), e);
+                    }
+                });
             }
         }, 15, 15, TimeUnit.SECONDS);
     }

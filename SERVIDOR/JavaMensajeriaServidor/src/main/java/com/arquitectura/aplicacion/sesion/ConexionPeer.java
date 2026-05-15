@@ -37,14 +37,12 @@ public class ConexionPeer {
         this.ultimaConexion = LocalDateTime.now();
     }
 
-    /** Registra un fallo de conexion y avanza el circuito segun los reintentos. */
+    /** Registra un fallo de conexion. El peer siempre queda en HALF_OPEN para reintento. */
     public synchronized void registrarFallo() {
         intentosReconexion++;
-        if (intentosReconexion >= maxIntentos) {
-            estado = EstadoPeer.OPEN;
-        } else {
-            estado = EstadoPeer.HALF_OPEN;
-        }
+        // En arquitectura stateless (socket por mensaje) nunca bloqueamos permanentemente.
+        // El peer siempre queda HALF_OPEN para que el proximo envio lo reintente.
+        estado = EstadoPeer.HALF_OPEN;
     }
 
     /** Coloca el peer en HALF_OPEN para que el proximo envio intente reconectar. */
