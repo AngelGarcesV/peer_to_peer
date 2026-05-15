@@ -75,7 +75,12 @@ public class Main {
                 }
             }
 
-            GestorServidoresPeer.inicializar(servidorId, puerto, peerConfigs, maxIntentos);
+            // server.host permite declarar la IP pública explícitamente.
+            // Evita que servidores con VPN/múltiples NICs anuncien la IP incorrecta.
+            String servidorHost = properties.getProperty("server.host", "").trim();
+            String hostFinal = servidorHost.isBlank() ? null : servidorHost;
+
+            GestorServidoresPeer.inicializar(servidorId, puerto, hostFinal, peerConfigs, maxIntentos);
             GestorServidoresPeer.getInstance().conectarAPeers();
             LOGGER.info(() -> "GestorServidoresPeer inicializado. servidorId=" + servidorId
                     + " | peers configurados=" + peerConfigs.size());

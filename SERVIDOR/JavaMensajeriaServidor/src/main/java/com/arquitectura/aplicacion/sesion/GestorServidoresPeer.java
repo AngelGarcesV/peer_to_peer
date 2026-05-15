@@ -49,6 +49,7 @@ public class GestorServidoresPeer {
 
     private String servidorId;
     private int servidorPuerto;
+    private String servidorHost; // IP pública explícita (configurada en application.properties)
 
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private final ScheduledExecutorService reconexionScheduler = Executors.newSingleThreadScheduledExecutor();
@@ -69,9 +70,15 @@ public class GestorServidoresPeer {
      */
     public static synchronized void inicializar(String servidorId, int puerto,
             List<PeerConfig> peerConfigs, int maxIntentos) {
+        inicializar(servidorId, puerto, null, peerConfigs, maxIntentos);
+    }
+
+    public static synchronized void inicializar(String servidorId, int puerto, String host,
+            List<PeerConfig> peerConfigs, int maxIntentos) {
         GestorServidoresPeer g = getInstance();
         g.servidorId = servidorId;
         g.servidorPuerto = puerto;
+        g.servidorHost = host; // puede ser null → fallback automático
         for (PeerConfig config : peerConfigs) {
             ConexionPeer conexion = new ConexionPeer(config, maxIntentos);
             g.peers.put(config.getServidorId(), conexion);
@@ -457,6 +464,11 @@ public class GestorServidoresPeer {
     }
 
     public String resolverIpLocalPublic() {
+        // Si el admin configuró server.host explícitamente, usarla siempre.
+        // Evita que máquinas con VPN/múltiples NICs anuncien la IP incorrecta.
+        if (servidorHost != null && !servidorHost.isBlank()) {
+            return servidorHost;
+        }
         try {
             java.util.Enumeration<java.net.NetworkInterface> interfaces =
                     java.net.NetworkInterface.getNetworkInterfaces();
