@@ -12,9 +12,16 @@ public interface ArchivoRecibidoRepository {
                  String rutaArchivo, String hashSha256, String contenidoCifrado,
                  long tamano, LocalDateTime fechaRecepcion, String servidorOrigen);
 
+    void guardar(String mensajeId, String remitente, String ipRemitente, String nombreArchivo, String extension,
+                 String rutaArchivo, String hashSha256, String contenidoCifrado,
+                 long tamano, LocalDateTime fechaRecepcion, String servidorOrigen, String destinatario);
+
     boolean existePorId(String id);
 
     List<ArchivoRecibidoModel> listarTodos();
+
+    /** Retorna archivos donde destinatario IS NULL (broadcast) OR destinatario = username */
+    List<ArchivoRecibidoModel> listarParaUsuario(String username);
 
     Optional<ArchivoRecibidoModel> buscarPorId(String id);
 }

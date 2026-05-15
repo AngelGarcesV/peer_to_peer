@@ -27,7 +27,18 @@ public class ListarDocumentosHandler implements Handler<Object> {
     @Override
     public Respuesta<?> handle(Mensaje<Object> mensaje) {
         try {
-            List<ArchivoRecibidoModel> archivos = archivoRepository.listarTodos();
+            // Obtener el username del cliente que solicita (desde metadata.clientId)
+            String username = null;
+            if (mensaje.getMetadata() != null && mensaje.getMetadata().getClientId() != null
+                    && !mensaje.getMetadata().getClientId().isBlank()) {
+                username = mensaje.getMetadata().getClientId();
+            }
+
+            // Si tenemos username: filtrar por destinatario (broadcast + unicast propio)
+            // Si no: fallback a listarTodos (compatibilidad)
+            List<ArchivoRecibidoModel> archivos = (username != null)
+                    ? archivoRepository.listarParaUsuario(username)
+                    : archivoRepository.listarTodos();
 
             List<Map<String, Object>> resultado = new ArrayList<>();
             for (ArchivoRecibidoModel a : archivos) {

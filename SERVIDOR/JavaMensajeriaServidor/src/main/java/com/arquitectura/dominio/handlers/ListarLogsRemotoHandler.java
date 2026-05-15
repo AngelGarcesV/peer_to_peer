@@ -10,6 +10,8 @@ import com.arquitectura.mensajeria.enums.Estado;
 import com.arquitectura.mensajeria.enums.TipoMensaje;
 import com.arquitectura.mensajeria.payload.PayloadListarLogsRemoto;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -60,15 +62,41 @@ public class ListarLogsRemotoHandler implements Handler<PayloadListarLogsRemoto>
             return error;
         }
 
-        // Retornar la respuesta del peer directamente al cliente como payload raw.
-        // El cliente puede deserializarla usando la misma estructura que LISTAR_LOGS.
-        Mensaje<String> mensajeRespuesta = new Mensaje<>();
+        // La respuesta del peer es el JSON completo de la Respuesta<?> del peer.
+        // Necesitamos extraer el payload (Map con registros/pagina/etc.) y devolverlo
+        // como Map estructurado para que el cliente lo pueda deserializar igual que LISTAR_LOGS local.
+        Map<String, Object> payloadExtraido;
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            @SuppressWarnings("unchecked")
+            Map<String, Object> respPeer = mapper.readValue(respuestaPeer, Map.class);
+            Object mensajeObj = respPeer.get("mensaje");
+            if (mensajeObj instanceof Map<?, ?> mensajeMap) {
+                Object payloadObj = mensajeMap.get("payload");
+                if (payloadObj instanceof Map<?, ?> pm) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> castado = (Map<String, Object>) pm;
+                    payloadExtraido = castado;
+                } else {
+                    payloadExtraido = new HashMap<>();
+                }
+            } else {
+                payloadExtraido = new HashMap<>();
+            }
+        } catch (Exception e) {
+            LOGGER.warning(() -> "Error deserializando respuesta del peer " + servidorId + ": " + e.getMessage());
+            Respuesta<?> error = new Respuesta<>();
+            error.setEstado(Estado.ERROR);
+            return error;
+        }
+
+        Mensaje<Map<String, Object>> mensajeRespuesta = new Mensaje<>();
         mensajeRespuesta.setTipo(TipoMensaje.RESPONSE);
         mensajeRespuesta.setAccion(Accion.LISTAR_LOGS_REMOTO);
         mensajeRespuesta.setMetadata(crearMetadata());
-        mensajeRespuesta.setPayload(respuestaPeer);
+        mensajeRespuesta.setPayload(payloadExtraido);
 
-        Respuesta<String> respuesta = new Respuesta<>();
+        Respuesta<Map<String, Object>> respuesta = new Respuesta<>();
         respuesta.setEstado(Estado.EXITO);
         respuesta.setMensaje(mensajeRespuesta);
         return respuesta;

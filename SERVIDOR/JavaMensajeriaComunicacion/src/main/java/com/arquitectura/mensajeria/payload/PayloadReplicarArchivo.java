@@ -13,6 +13,7 @@ public class PayloadReplicarArchivo {
     private long tamano;
     private String servidorOrigen;
     private LocalDateTime fechaRecepcion;
+    private String clientIdDestino; // null = broadcast, valor = unicast
 
     public PayloadReplicarArchivo() {}
 
@@ -86,5 +87,13 @@ public class PayloadReplicarArchivo {
 
     public void setFechaRecepcion(LocalDateTime fechaRecepcion) {
         this.fechaRecepcion = fechaRecepcion;
+    }
+
+    public String getClientIdDestino() {
+        return clientIdDestino;
+    }
+
+    public void setClientIdDestino(String clientIdDestino) {
+        this.clientIdDestino = clientIdDestino;
     }
 }

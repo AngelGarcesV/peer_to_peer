@@ -63,6 +63,8 @@ public class ReplicarArchivoHandler implements Handler<PayloadReplicarArchivo> {
             return error;
         }
 
+        String clientIdDestino = payload.getClientIdDestino();
+
         archivoRecibidoRepository.guardar(
                 payload.getId(),
                 payload.getRemitente(),
@@ -74,19 +76,23 @@ public class ReplicarArchivoHandler implements Handler<PayloadReplicarArchivo> {
                 payload.getContenidoCifrado(),
                 payload.getTamano(),
                 fechaRecepcion,
-                servidorOrigen
+                servidorOrigen,
+                clientIdDestino
         );
 
         LOGGER.info(() -> "Archivo replicado persistido: id=" + payload.getId()
                 + " | nombre=" + payload.getNombreArchivo()
-                + " | origen=" + servidorOrigen);
+                + " | origen=" + servidorOrigen
+                + " | destinatario=" + clientIdDestino);
 
-        // Fan-out a peers adicionales (idempotente por existePorId)
-        GestorServidoresPeer gestorPeers = GestorServidoresPeer.getInstance();
-        if (!gestorPeers.obtenerPeersConectados().isEmpty()) {
-            Mensaje<PayloadReplicarArchivo> msgReplica = construirMensajeReplica(payload);
-            gestorPeers.enviarATodos(msgReplica);
-            LOGGER.info(() -> "Archivo replicado propagado a peers adicionales: id=" + payload.getId());
+        // Fan-out solo si es broadcast (clientIdDestino == null)
+        if (clientIdDestino == null || clientIdDestino.isBlank()) {
+            GestorServidoresPeer gestorPeers = GestorServidoresPeer.getInstance();
+            if (!gestorPeers.obtenerPeersConectados().isEmpty()) {
+                Mensaje<PayloadReplicarArchivo> msgReplica = construirMensajeReplica(payload);
+                gestorPeers.enviarATodos(msgReplica);
+                LOGGER.info(() -> "Archivo replicado propagado a peers adicionales: id=" + payload.getId());
+            }
         }
 
         return crearRespuestaExito("Archivo replicado: " + payload.getId());
